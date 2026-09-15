@@ -10,11 +10,11 @@ module.exports.authuser = async (req, res, next) => {
     }
     try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET || "secretkey");
-    const user = await user.findById(decoded._id);
-    if (!user) {
+    const authenticatedUser = await user.findById(decoded._id);
+    if (!authenticatedUser) {
       return res.status(401).json({ message: "Unauthorized" });
     }
-    req.user = user;
+    req.user = authenticatedUser;
     return next();
   } catch (err) {
     return res.status(401).json({ message: "Unauthorized" });

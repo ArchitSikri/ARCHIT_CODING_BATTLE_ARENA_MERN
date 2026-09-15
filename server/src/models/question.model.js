@@ -43,7 +43,7 @@ const questionSchema = new mongoose.Schema({
     testCases: [testCaseSchema],
     timeLimit: {
         type: Number,
-        default: 2 // seconds
+        default: 2 
     },
     memoryLimit: {
         type: Number,

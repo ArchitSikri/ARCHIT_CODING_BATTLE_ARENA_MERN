@@ -1,23 +1,45 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-
+import axios from "axios";
+import toast from "react-hot-toast";
 
 const backgroundImage =
   "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSCabyU5eIvOOMrfztFZONxFVe_hkK5SaVvlrQdRAtR2K3_4ApUaA0BhwU&s=10";
 
 const Login = () => {
   const navigate = useNavigate();
+  const Base_Url = import.meta.env.VITE_BASE_URL;
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
-    console.log("Login Data:", {
-      email,
-      password,
-    });
-    navigate("/home");
+
+    try {
+      const res = await axios.post(
+        `${Base_Url}/api/user/login`,
+        { email, password },
+        {
+          headers: { "Content-Type": "application/json" },
+          withCredentials: true,
+        }
+      );
+
+      if (res.data?.token) {
+        localStorage.setItem("token", res.data.token);
+        localStorage.setItem("user", JSON.stringify({
+          id: res.data.id,
+          name: res.data.name,
+          email: res.data.email,
+        }));
+      }
+
+      toast.success(res.data.message || "Login successful");
+      navigate("/home");
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Invalid email or password");
+    }
   };
 
   return (

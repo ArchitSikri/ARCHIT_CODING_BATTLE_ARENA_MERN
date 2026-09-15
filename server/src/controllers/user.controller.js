@@ -32,13 +32,13 @@ const loginUser = async (req, res) => {
         }
         const token = jwt.sign({ _id: existingUser._id , name: existingUser.name , email: existingUser.email }, process.env.JWT_SECRET || "secretkey", { expiresIn: "1 day" });
         res.cookie("token", token, { httpOnly: true });
-        res.status(200).json({ message: "Login successful" });
-        res.json({
+        return res.status(200).json({
+            message: "Login successful",
             token : token,
             id: existingUser._id,
             name: existingUser.name,
             email: existingUser.email,
-        })
+        });
     } catch (err) {
         res.status(500).json({ message: "Error logging in" });
     }
@@ -60,5 +60,18 @@ const logout = (req, res) => {
   }
 };
 
+const getUserProfile = async(req,res )=>{
+    res.status(200).json({ user: req.user });   
+};
 
-module.exports = { registerUser, loginUser, logout };
+const getopponent = async(req,res )=>{
+    const socketId = req.params.socketId;
+    const opponent = await user.findOne({socketId: socketId});
+    res.status(200).json({ opponent: opponent });
+
+}
+
+
+
+
+module.exports = { registerUser, loginUser, logout , getUserProfile , getopponent};
