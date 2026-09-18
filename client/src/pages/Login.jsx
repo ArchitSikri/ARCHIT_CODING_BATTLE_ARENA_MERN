@@ -2,9 +2,11 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
 import toast from "react-hot-toast";
-
-const backgroundImage =
-  "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSCabyU5eIvOOMrfztFZONxFVe_hkK5SaVvlrQdRAtR2K3_4ApUaA0BhwU&s=10";
+import { ArrowRight, KeyRound, Mail, ShieldCheck } from "lucide-react";
+import PageFrame from "../components/layout/PageFrame";
+import ActionButton from "../components/ui/ActionButton";
+import GlassPanel from "../components/ui/GlassPanel";
+import TextInput from "../components/ui/TextInput";
 
 const Login = () => {
   const navigate = useNavigate();
@@ -43,91 +45,21 @@ const Login = () => {
   };
 
   return (
-    <div
-      className="min-h-screen w-full bg-cover bg-center bg-fixed flex items-center justify-center px-4"
-      style={{
-        backgroundImage: `url("${backgroundImage}")`,
-      }}
-    >
-      <div className="fixed inset-0 bg-black/65"></div>
-      <div className="relative z-10 w-full max-w-md">
-
-        <div className="bg-black/70 backdrop-blur-xl border border-white/10 rounded-3xl p-8 shadow-2xl">
-          <div className="text-center mb-8">
-
-            <h1 className="text-4xl font-bold text-white">
-              Welcome Back
-            </h1>
-
-            <p className="text-gray-400 mt-2">
-              Enter the arena and battle your friends
-            </p>
-
-          </div>
-
-          <form
-            onSubmit={handleLogin}
-            className="space-y-5"
-          >
-            <div>
-
-              <label className="block text-sm text-gray-300 mb-2">
-                Email
-              </label>
-
-              <input
-                type="email"
-                placeholder="Enter your email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                className="w-full px-4 py-3 bg-white/10 border border-white/10 rounded-xl text-white placeholder-gray-500 outline-none focus:border-purple-500 focus:bg-white/15 transition"
-              />
-
-            </div>
-
-            <div>
-
-              <label className="block text-sm text-gray-300 mb-2">
-                Password
-              </label>
-
-              <input
-                type="password"
-                placeholder="Enter your password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                className="w-full px-4 py-3 bg-white/10 border border-white/10 rounded-xl text-white placeholder-gray-500 outline-none focus:border-purple-500 focus:bg-white/15 transition"
-              />
-
-            </div>
-            <button
-              type="submit"
-              className="w-full py-3 bg-purple-600 hover:bg-purple-700 rounded-xl text-white font-semibold transition duration-200"
-            >
-              Login
-            </button>
-
-          </form>
-
-          <p className="text-center text-gray-400 mt-7">
-
-            Don't have an account?{" "}
-
-            <Link
-              to="/register"
-              className="text-purple-400 hover:text-purple-300 font-medium"
-            >
-              Sign Up
-            </Link>
-
-          </p>
-
+    <PageFrame className="flex min-h-[calc(100vh-8rem)] items-center justify-center">
+      <GlassPanel className="w-full max-w-md rounded-3xl p-6 sm:p-8">
+        <div className="mb-6">
+          <div className="mb-4 flex items-center gap-2 text-emerald-300"><ShieldCheck size={17} /><span className="text-xs font-semibold uppercase tracking-[0.2em]">Secure sign in</span></div>
+          <h1 className="text-4xl font-black tracking-tight">Welcome back.</h1>
+          <p className="mt-3 text-sm leading-6 text-white/50">Enter the arena and battle your friends in real time.</p>
         </div>
-
-      </div>
-    </div>
+        <form onSubmit={handleLogin} className="space-y-5">
+          <TextInput label="Email address" icon={Mail} type="email" placeholder="you@example.com" value={email} onChange={(e) => setEmail(e.target.value)} required />
+          <TextInput label="Password" icon={KeyRound} type="password" placeholder="Enter your password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+          <ActionButton type="submit" icon={ArrowRight} className="w-full">Enter the arena</ActionButton>
+        </form>
+        <p className="mt-7 text-center text-sm text-white/45">New challenger? <Link to="/register" className="font-semibold text-fuchsia-300 transition hover:text-white">Create an account</Link></p>
+      </GlassPanel>
+    </PageFrame>
   );
 };
 

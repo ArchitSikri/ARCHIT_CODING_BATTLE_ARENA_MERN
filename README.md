@@ -1,10 +1,12 @@
 # Coding Battle MERN
 
-A full-stack coding challenge app built with the MERN stack. Users can register, log in, and participate in real-time coding battles with a React front end and an Express + MongoDB backend.
+A full-stack coding battle application built with the MERN stack. Players can create or join rooms, prepare for a head-to-head challenge, solve coding problems, and view battle results through a responsive glassmorphism UI.
 
 ## Tech Stack
 
-- Frontend: React, Vite, React Router, Redux Toolkit, Tailwind CSS
+- Frontend: React, Vite, React Router, Tailwind CSS
+- UI: Lucide React, Remix Icon, GSAP animations
+- Code editor: Monaco Editor
 - Backend: Node.js, Express.js
 - Database: MongoDB with Mongoose
 - Real-time communication: Socket.IO
@@ -13,11 +15,13 @@ A full-stack coding challenge app built with the MERN stack. Users can register,
 ## Features
 
 - User registration and login
-- Protected routes for authenticated users
-- Real-time battle matchmaking / room logic with Socket.IO
-- Code editor experience on the client
-- MongoDB-backed battle and user data
-- Responsive single-page app frontend
+- Create and join battle rooms
+- Battle preparation and arena screens
+- Coding challenge editor experience
+- Battle winner and profile screens
+- Real-time battle room foundation with Socket.IO
+- MongoDB-backed users, questions, and battles
+- Responsive page layouts with a shared background and transparent panels
 
 ## Project Structure
 
@@ -25,19 +29,48 @@ A full-stack coding challenge app built with the MERN stack. Users can register,
 CODING_BATTLE_MERN/
 ├── client/
 │   ├── src/
+│   │   ├── components/
+│   │   │   ├── layout/       # Page frame, background, header, GSAP entrance
+│   │   │   └── ui/           # Glass panels, buttons, inputs, headings
+│   │   ├── constants/        # Shared frontend constants
+│   │   ├── pages/            # Login, lobby, room, arena, result, profile
+│   │   ├── App.jsx           # Client routes
+│   │   └── main.jsx          # React entry point
 │   ├── public/
 │   ├── package.json
 │   ├── vite.config.js
 │   └── index.html
 ├── server/
 │   ├── src/
+│   │   ├── config/
+│   │   ├── controllers/
+│   │   ├── middlewares/
+│   │   ├── models/
+│   │   ├── routes/
+│   │   ├── services/
+│   │   └── socket/
 │   ├── App.js
 │   ├── server.js
 │   └── package.json
 ├── .gitignore
-├── README.md
-└── package.json (if added later)
+└── README.md
 ```
+
+## Frontend Routes
+
+| Route | Screen |
+| --- | --- |
+| `/` | Login |
+| `/register` | Registration |
+| `/home` | Battle lobby |
+| `/create-room` | Create a private room |
+| `/join-room` | Join a room with a code |
+| `/start-battle` | Battle preparation |
+| `/battle-arena` | Coding arena |
+| `/battle-winner` | Battle result |
+| `/profile` | Player profile |
+
+The frontend keeps reusable presentation pieces in `client/src/components/`. `PageFrame` owns the shared background, overlay, header, and GSAP entrance animation, while the smaller UI components handle panels, buttons, headings, and inputs.
 
 ## Prerequisites
 
@@ -119,16 +152,25 @@ http://localhost:5173
 - `MONGO_URL` is required for the backend to connect to MongoDB.
 - `JWT_SECRET` is used for user authentication tokens.
 
-## Common Run Commands
+## Common Commands
 
-From the root if needed:
+Run each application from its own package directory. There is currently no root `package.json`.
 
 ```bash
 # backend
-cd server && npm install && npm run dev
+cd server
+npm install
+npm run dev
 
 # frontend
-cd client && npm install && npm run dev
+cd client
+npm install
+npm run dev
+
+# frontend validation
+cd client
+npm run lint
+npm run build
 ```
 
 ## Useful Links
