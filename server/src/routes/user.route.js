@@ -12,5 +12,4 @@ router.get("/opponent/:socketId", getopponent);
 
 
 
-
 module.exports = router;

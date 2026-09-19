@@ -11,12 +11,12 @@ const battleSchema = mongoose.Schema({
     },
     createdBy: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'user',
+        ref: 'User',
         required: true
     },
     challenger: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'user'
+        ref: 'User'
     },
     isPrivate: {
         type: Boolean,
@@ -73,7 +73,7 @@ const battleSchema = mongoose.Schema({
 
     winner: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'user'
+        ref: 'User'
     },
 
     user1SocketId: {

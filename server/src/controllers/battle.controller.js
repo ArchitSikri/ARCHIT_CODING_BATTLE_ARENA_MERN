@@ -1,7 +1,7 @@
 const battleModel = require("../models/battle.model");
 const battleService = require("../services/battle.service");
 
-const createbattle = async ( req , res ) => {
+const createbattle = async ( req , res, next ) => {
 
 
     try {
@@ -45,6 +45,64 @@ const getAllBattles = async (req, res, next) => {
   try {
     const battles = await battleModel.find({}).populate('createdBy', 'fullname');
     res.status(200).json({ battles });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const getBattleByRoomCode = async (req, res, next) => {
+  try {
+    const battle = await battleModel.findOne({ roomCode: req.params.roomCode })
+      .populate('createdBy', 'fullname');
+
+    if (!battle) {
+      return res.status(404).json({ message: "Battle room not found" });
+    }
+
+    return res.status(200).json({ battle });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const joinBattle = async (req, res, next) => {
+  try {
+    const roomCode = req.params.roomCode.trim().toUpperCase();
+
+    const availableBattle = await battleModel.findOne({ roomCode });
+    if (!availableBattle) {
+      return res.status(404).json({ message: "Battle room not found" });
+    }
+
+    if (availableBattle.createdBy.toString() === req.user._id.toString()) {
+      return res.status(400).json({ message: "You cannot join your own battle room" });
+    }
+
+    if (availableBattle.challenger?.toString() === req.user._id.toString()) {
+      const joinedBattle = await battleModel.findById(availableBattle._id)
+        .populate("createdBy", "name email")
+        .populate("challenger", "name email");
+
+      return res.status(200).json({ battle: joinedBattle, message: "Already joined this battle room" });
+    }
+
+    const battle = await battleModel.findOneAndUpdate(
+      {
+        _id: availableBattle._id,
+        status: "waiting",
+        $or: [{ challenger: { $exists: false } }, { challenger: null }],
+      },
+      { $set: { challenger: req.user._id } },
+      { new: true }
+    )
+      .populate("createdBy", "name email")
+      .populate("challenger", "name email");
+
+    if (!battle) {
+      return res.status(409).json({ message: "This battle room already has two players or has started" });
+    }
+
+    return res.status(200).json({ battle, message: "Joined battle room successfully" });
   } catch (error) {
     next(error);
   }
@@ -155,4 +213,4 @@ const completeBattle = async (req, res, next) => {
 
     
 
-module.exports = { createbattle, getAllBattles, deleteBattle, leaveBattle, StartBattle , completeBattle };
+module.exports = { createbattle, getAllBattles, getBattleByRoomCode, joinBattle, deleteBattle, leaveBattle, StartBattle , completeBattle };
