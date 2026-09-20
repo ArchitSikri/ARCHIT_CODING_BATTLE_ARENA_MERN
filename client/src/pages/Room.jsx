@@ -195,7 +195,7 @@ const Room = () => {
         socket?.emit("startBattle", {
           roomCode: roomId,
           opponentSocketId: battle.user2SocketId,
-        });
+        }); 
 
         setShowBattleModal(false);
         navigate(`/start-battle/room/${roomId}`);

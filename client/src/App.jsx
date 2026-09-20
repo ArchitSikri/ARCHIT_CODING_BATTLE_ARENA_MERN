@@ -28,7 +28,6 @@ function App() {
         <Route path="/room/:roomId" element={<UserProtectedWrapper><Room /></UserProtectedWrapper>} />
         <Route path="/join-room" element={<UserProtectedWrapper><JoinMatch /></UserProtectedWrapper>} />
         <Route path="/start-battle/room/:roomId" element={<UserProtectedWrapper><StartBattle /></UserProtectedWrapper>} />
-        <Route path="/battle-arena/room/:roomId" element={<UserProtectedWrapper><BattleArena /></UserProtectedWrapper>} />
         <Route path="/battle-winner/room/:roomId" element={<UserProtectedWrapper><BattleWinner /></UserProtectedWrapper>} />
         <Route path="/profile" element={<UserProtectedWrapper><ProfilePage /></UserProtectedWrapper>} />
         <Route path="*" element={<Navigate to="/" replace />} />

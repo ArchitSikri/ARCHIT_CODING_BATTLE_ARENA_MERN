@@ -1,87 +1,239 @@
-import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Check, Copy, Swords, UserRound } from "lucide-react";
-import PageFrame from "../components/layout/PageFrame";
-import ActionButton from "../components/ui/ActionButton";
-import GlassPanel from "../components/ui/GlassPanel";
-import PageHeading from "../components/ui/PageHeading";
 
-const StartBattle = () => {
-  const navigate = useNavigate();
-  const { roomId } = useParams();
+import React from "react";
+import { useState , useEffect , useContext } from "react";
+import { useParams , useNavigate } from "react-router-dom";
+import axios from "axios";
 
-  const handleStartBattle = () => {
-    if (!roomId) {
-      navigate("/home");
-      return;
-    }
+import {Code2,
+  Play,
+  RefreshCw,
+  Clock,
+  AlertCircle,
+  Terminal,
+  CheckCircle,
+} from "lucide-react";
 
-    navigate(`/battle-arena/room/${roomId}`);
-  };
+import { UserDataContext } from "../context/UserContext";
+import Editor from "@monaco-editor/react";
+import { SocketContext } from "../context/SocketContext";
 
-  return (
-    <PageFrame className="flex min-h-[calc(100vh-3rem)] flex-col justify-center">
-      <button
-        type="button"
-        onClick={() => navigate("/home")}
-        className="mb-8 flex items-center gap-2 text-sm text-white/45 hover:text-white"
-      >
-        <ArrowLeft size={16} />
-        Back to lobby
-      </button>
 
-      <PageHeading
-        eyebrow={roomId ? `Room ${roomId}` : "Room"}
-        title="Your rival is in."
-        description="Everything is set. Take a breath, then start the round."
-      />
-
-      <GlassPanel className="rounded-3xl p-6 sm:p-8">
-        <div className="grid gap-4 sm:grid-cols-3">
-          <div className="rounded-2xl border border-fuchsia-300/20 bg-fuchsia-300/10 p-5 text-center">
-            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-fuchsia-400/20 text-xl font-black">
-              A
-            </div>
-            <p className="mt-4 font-bold">Archit</p>
-            <p className="mt-1 text-xs text-fuchsia-200/70">Ready</p>
-          </div>
-
-          <div className="flex items-center justify-center text-white/35">
-            <Swords size={28} />
-          </div>
-
-          <div className="rounded-2xl border border-cyan-300/20 bg-cyan-300/10 p-5 text-center">
-            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-cyan-400/20">
-              <UserRound size={21} />
-            </div>
-            <p className="mt-4 font-bold">Waiting rival</p>
-            <p className="mt-1 text-xs text-cyan-200/70">Connected</p>
-          </div>
-        </div>
-
-        <div className="mt-7 flex flex-col gap-3 sm:flex-row">
-          <ActionButton
-            className="flex-1"
-            icon={Swords}
-            onClick={handleStartBattle}
-          >
-            Start battle
-          </ActionButton>
-          <button
-            type="button"
-            className="flex items-center justify-center gap-2 rounded-xl border border-white/10 px-5 py-3 text-sm font-semibold text-white/60 hover:text-white"
-          >
-            <Copy size={16} />
-            Share room
-          </button>
-        </div>
-
-        <p className="mt-5 flex items-center justify-center gap-2 text-xs text-white/35">
-          <Check size={14} className="text-emerald-300" />
-          Both players are ready
-        </p>
-      </GlassPanel>
-    </PageFrame>
-  );
+const languageMapping = {
+  javascript: 63,
+  python: 71,
+  cpp: 54,
+  java: 62,
+  csharp: 51,
+  ruby: 72,
+  go: 60,
 };
 
-export default StartBattle;
+const getLanguageId = (lang) => languageMapping[lang] || 63;
+
+const allLanguages = [
+  "javascript",
+  "python",
+  "cpp",
+  "java",
+  "csharp",
+  "ruby",
+  "go",
+];
+
+
+const StartBattle = () => {
+
+
+  const nevigate = useNavigate();
+  const { roomcode } = useParams();
+  const { user } = useContext(UserDataContext);
+  const { socket } = useContext(SocketContext);
+  const userPreferredLanguage = user?.preferredLanguage || "";
+  const [scores, setScores] = useState({ creator: 0, challenger: 0 });
+  const [battle, setBattle] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [isCreator, setIsCreator] = useState(false);
+  const [isGeneratingQuestion, setIsGeneratingQuestion] = useState(false);
+  const [currentQuestion, setCurrentQuestion] = useState(null);
+  const [code, setCode] = useState("");
+  const [opponentTyping, setOpponentTyping] = useState(false);
+  const [allowedLanguages, setAllowedLanguages] = useState([]);
+  const [selectedLanguage, setSelectedLanguage] = useState("");
+  const [opponentName, setOpponentName] = useState("Waiting...");
+  const [opponentLanguage, setOpponentLanguage] = useState("");
+  const [questionIndex, setQuestionIndex] = useState(0);
+  const [timer, setTimer] = useState(600);
+  const [editorInstance, setEditorInstance] = useState(null);
+  const [toastMessage, setToastMessage] = useState("");
+  const [hasSubmitted, setHasSubmitted] = useState(false);
+
+  useEffect(() => {
+    if (userPreferredLanguage) {
+      setSelectedLanguage(userPreferredLanguage);
+    }
+  }, [userPreferredLanguage]);
+
+  const fetchOpponent = async (socketId) => {
+    try {
+      const token = localStorage.getItem("token");
+      const response = await axios.get(
+        `${import.meta.env.VITE_BASE_URL}/users/opponent/${socketId}`,
+        {
+          withCredentials: true,
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+    
+
+      const opponent = response.data?.opponent;
+      setOpponentName(opponent?.name || opponent?.email || "Opponent");
+      setOpponentLanguage(opponent?.preferredLanguage || "");
+    } catch (err) {
+      console.error("Error fetching opponent:", err);
+    }
+  };
+
+  useEffect(() => {
+    const fetchBattle = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        const response = await axios.get(
+          `${import.meta.env.VITE_BASE_URL}/battle/all`,
+          {
+            withCredentials: true,
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
+
+        if (response.status !== 200) return;
+
+        const foundBattle = response.data.battles.find(
+          (battleItem) => battleItem.roomCode === roomcode
+        );
+
+        if (!foundBattle) return;
+
+        setBattle(foundBattle);
+        setAllowedLanguages(
+          foundBattle.isSameLanguage
+            ? foundBattle.allowedLanguages || []
+            : allLanguages
+        );
+
+        if (userPreferredLanguage) {
+          setSelectedLanguage(userPreferredLanguage);
+        }
+
+        const creatorId =
+          typeof foundBattle.createdBy === "object"
+            ? foundBattle.createdBy._id
+            : foundBattle.createdBy;
+        const creatorBool = String(creatorId) === String(user?._id);
+        setIsCreator(creatorBool);
+
+        if (isCreator) {
+          fetchOpponent(foundBattle.user2SocketId);
+        } else if (foundBattle.user1SocketId) {
+          fetchOpponent(foundBattle.user1SocketId);
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    };
+
+    fetchBattle();
+  }, [roomcode, user, userPreferredLanguage]);
+
+
+   useEffect(() => {
+    if (battle && currentQuestion) {
+      let interval;
+      if (battle.mode === "quality") {
+        interval = setInterval(() => {
+          setTimer((prev) => {
+            if (prev <= 1) {
+              clearInterval(interval);
+              setCurrentQuestion(null);
+              return 600; // reset timer for next question
+            }
+            return prev - 1;
+          });
+        }, 1000);
+      } else if (battle.mode === "time") {
+        setTimer(0);
+        interval = setInterval(() => {
+          setTimer((prev) => prev + 1);
+        }, 1000);
+      }
+      return () => clearInterval(interval);
+    }
+  }, [battle, currentQuestion]);
+
+
+   useEffect(() => {
+    if (!socket) return;
+    socket.on("newQuestion", (data) => {
+      setCurrentQuestion(data.question);
+      setHasSubmitted(false);
+      setCode(""); // clear the code editor upon receiving a new question
+      if (battle) {
+        if (battle.mode === "quality") {
+          setTimer(600);
+        } else if (battle.mode === "time") {
+          setTimer(0);
+        }
+      }
+    });
+    socket.on("scoreUpdate", (data) => {
+      setScores(data.scores);
+    });
+    socket.on("pointAwarded", (data) => {
+      const wonPoint =
+        (isCreator && data.winner === "creator") ||
+        (!isCreator && data.winner === "challenger");
+      const msg = wonPoint ? "You won a point" : "Opponent won a point";
+      setToastMessage(msg);
+      // Clear the current question and increment the question index
+      setCurrentQuestion(null);
+      setQuestionIndex((prev) => prev + 1);
+      if (battle) {
+        if (battle.mode === "quality") {
+          setTimer(600);
+        } else if (battle.mode === "time") {
+          setTimer(0);
+        }
+      }
+      setTimeout(() => setToastMessage(""), 2000);
+    });
+    socket.on("battleCompleted", (data) => {
+      // data contains isWinner, battleDetails, finalScore
+      navigate(`/battle-winner/${battle.roomCode}`, {
+        state: {
+          isWinner: data.isWinner,
+          battleDetails: data.battleDetails,
+          finalScore: data.finalScore,
+        },
+      });
+    });
+    return () => {
+      socket.off("newQuestion");
+      socket.off("scoreUpdate");
+      socket.off("pointAwarded");
+      socket.off("battleCompleted");
+    };
+  }, [socket, battle, isCreator, navigate]);
+
+
+  
+
+  
+
+
+  return (
+    <div>
+      
+    </div>
+  )
+}
+
+export default StartBattle
