@@ -43,6 +43,11 @@ const JoinMatch = () => {
 			toast.success(response.data.message || "Joined battle room");
 			navigate(`/room/${battle.roomCode}`, { state: { battle } });
 		} catch (error) {
+			const battle = error.response?.data?.battle;
+			if (battle?.roomCode && error.response?.status === 409) {
+				navigate(`/room/${battle.roomCode}`, { state: { battle } });
+				return;
+			}
 			toast.error(error.response?.data?.message || error.message || "Unable to join room");
 		} finally {
 			setIsJoining(false);

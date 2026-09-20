@@ -86,6 +86,13 @@ const joinBattle = async (req, res, next) => {
       return res.status(200).json({ battle: joinedBattle, message: "Already joined this battle room" });
     }
 
+    if (availableBattle.challenger && availableBattle.challenger.toString() !== req.user._id.toString()) {
+      return res.status(409).json({
+        battle: availableBattle,
+        message: "This battle room already has a challenger."
+      });
+    }
+
     const battle = await battleModel.findOneAndUpdate(
       {
         _id: availableBattle._id,
@@ -99,7 +106,10 @@ const joinBattle = async (req, res, next) => {
       .populate("challenger", "name email");
 
     if (!battle) {
-      return res.status(409).json({ message: "This battle room already has two players or has started" });
+      return res.status(409).json({
+        battle: availableBattle,
+        message: "This battle room already has two players or has started"
+      });
     }
 
     return res.status(200).json({ battle, message: "Joined battle room successfully" });
@@ -151,27 +161,32 @@ const StartBattle = async (req, res, next) => {
     if (!battle) {
       return res.status(404).json({ message: "Battle not found" });
     }
-    const questionsData = require('../services/questionsData.json'); 
+
+    const questionsData = require('../services/question.json');
     const filteredQuestions = questionsData.filter(
-      (q) => q.difficulty.toLowerCase() === battle.difficulty.toLowerCase()
+      (q) => q && q.difficulty && q.difficulty.toLowerCase() === String(battle.difficulty).toLowerCase()
     );
+
     if (filteredQuestions.length < battle.questionsNumber) {
       return res.status(400).json({ message: "Not enough questions for the selected difficulty." });
     }
+
     const selectedQuestions = [];
     while (selectedQuestions.length < battle.questionsNumber) {
       const idx = Math.floor(Math.random() * filteredQuestions.length);
-      if (!selectedQuestions.includes(filteredQuestions[idx])) {
-        selectedQuestions.push(filteredQuestions[idx]);
+      const question = filteredQuestions[idx];
+      if (!selectedQuestions.includes(question)) {
+        selectedQuestions.push(question);
       }
     }
+
     battle.questions = selectedQuestions;
     battle.status = 'in-progress';
     await battle.save();
-    res.status(200).json({ battle, message: "Battle started successfully." });
+    return res.status(200).json({ battle, message: "Battle started successfully." });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ message: "An error occurred while starting the battle." });
+    return res.status(500).json({ message: "An error occurred while starting the battle." });
   }
 };
 

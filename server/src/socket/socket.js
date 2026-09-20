@@ -76,7 +76,7 @@ function initializesocket(server) {
             if (io) {
                 io.to(opponentSocketId).emit("redirectToBattle", { roomCode });
             }
-        });
+        }); 
 
         socket.on("battleCompleted", (data) => {
             io.in(data.roomCode).emit("battleCompleted", data);
