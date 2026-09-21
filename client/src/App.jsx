@@ -11,7 +11,6 @@ import Home from "./pages/Home";
 import CreaterRoom from "./pages/CreaterRoom";
 import JoinMatch from "./pages/JoinMatch";
 import StartBattle from "./pages/StartBattle";
-import BattleArena from "./pages/BattleArena";
 import BattleWinner from "./pages/BattleWinner";
 import ProfilePage from "./pages/ProfilePage";
 import Room from "./pages/Room";
