@@ -15,30 +15,32 @@ const UserProtectedWrapper = ({
 
     useEffect(() => {
         if (!token) {
-            navigate('/login')
+            navigate('/');
+            return;
         }
 
-        axios.get(`${import.meta.env.VITE_BASE_URL}/users/profile`, {
+        const baseUrl = import.meta.env.VITE_BASE_URL || "http://localhost:9000";
+        axios.get(`${baseUrl}/users/profile`, {
             headers: {
                 Authorization: `Bearer ${token}`
             }
         }).then(response => {
             if (response.status === 200) {
                 if(!response.data.user){
-                    
-                    localStorage.removeItem('token')
-                    navigate('/login')
+                    localStorage.removeItem('token');
+                    navigate('/');
+                    return;
                 }
-                setUser(response.data.user)
-                setIsLoading(false)
+                setUser(response.data.user);
+                setIsLoading(false);
             }
         })
             .catch(err => {
-                console.log(err)
-                localStorage.removeItem('token')
-                navigate('/login')
-            })
-    }, [ token ])
+                console.log(err);
+                localStorage.removeItem('token');
+                navigate('/');
+            });
+    }, [ token, navigate, setUser ]);
 
 
     if (isLoading) {

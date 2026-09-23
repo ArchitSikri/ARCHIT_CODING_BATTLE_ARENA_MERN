@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useContext } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import axios from "axios";
@@ -34,6 +33,7 @@ const StartBattle = () => {
   const { user } = useContext(UserDataContext);
   const { socket } = useContext(SocketContext);
   const userPreferredLanguage = user?.preferredLanguage || "";
+  const baseUrl = import.meta.env.VITE_BASE_URL || "http://localhost:9000";
 
   const [scores, setScores] = useState({ creator: 0, challenger: 0 });
   const [battle, setBattle] = useState(null);
@@ -58,37 +58,36 @@ const StartBattle = () => {
     }
   }, [allowedLanguages, userPreferredLanguage]);
 
-  const fetchOpponent = async (socketId) => {
-    try {
-      const token = localStorage.getItem("token");
-      const response = await axios.get(
-        `${import.meta.env.VITE_BASE_URL}/users/opponent/${socketId}`,
-        {
-          withCredentials: true,
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
-
-      const opponent = response.data?.opponent;
-      const resolvedOpponent = Array.isArray(opponent) ? opponent[0] : opponent;
-
-      setOpponentName(
-        resolvedOpponent?.name ||
-          `${resolvedOpponent?.fullname?.firstname || ""} ${resolvedOpponent?.fullname?.lastname || ""}`.trim() ||
-          resolvedOpponent?.email ||
-          "Opponent"
-      );
-    } catch (error) {
-      console.error("Error fetching opponent:", error);
-    }
-  };
-
   useEffect(() => {
+    const fetchOpponent = async (socketId) => {
+      try {
+        const token = localStorage.getItem("token");
+        const response = await axios.get(
+          `${baseUrl}/api/user/opponent/${socketId}`,
+          {
+            withCredentials: true,
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
+
+        const opponent = response.data?.opponent;
+        const resolvedOpponent = Array.isArray(opponent) ? opponent[0] : opponent;
+
+        setOpponentName(
+          resolvedOpponent?.name ||
+            resolvedOpponent?.email ||
+            "Opponent"
+        );
+      } catch (error) {
+        console.error("Error fetching opponent:", error);
+      }
+    };
+
     const fetchBattle = async () => {
       try {
         const token = localStorage.getItem("token");
         const response = await axios.get(
-          `${import.meta.env.VITE_BASE_URL}/battle/all`,
+          `${baseUrl}/api/battle/all`,
           {
             withCredentials: true,
             headers: { Authorization: `Bearer ${token}` },
@@ -140,7 +139,7 @@ const StartBattle = () => {
     if (roomId) {
       fetchBattle();
     }
-  }, [roomId, user, userPreferredLanguage]);
+  }, [roomId, user, userPreferredLanguage, baseUrl]);
 
   useEffect(() => {
     if (battle && currentQuestion) {
@@ -157,7 +156,6 @@ const StartBattle = () => {
           });
         }, 1000);
       } else if (battle.mode === "time") {
-        setTimer(0);
         interval = setInterval(() => {
           setTimer((prev) => prev + 1);
         }, 1000);
@@ -192,7 +190,7 @@ const StartBattle = () => {
       const wonPoint =
         (isCreator && data.winner === "creator") ||
         (!isCreator && data.winner === "challenger");
-      const msg = wonPoint ? "You won a point" : "Opponent won a point";
+      const msg = wonPoint ? "You won a point!" : "Opponent won a point!";
       setToastMessage(msg);
       setCurrentQuestion(null);
       setQuestionIndex((prev) => prev + 1);
@@ -203,15 +201,25 @@ const StartBattle = () => {
           setTimer(0);
         }
       }
-      setTimeout(() => setToastMessage(""), 2000);
+      setTimeout(() => setToastMessage(""), 2500);
     });
 
     socket.on("battleCompleted", (data) => {
-      navigate(`/battle-winner/room/${battle.roomCode}`, {
+      const finalScore = data.finalScore || { creator: 0, challenger: 0 };
+      const userScore = isCreator ? finalScore.creator : finalScore.challenger;
+      const opponentScore = isCreator ? finalScore.challenger : finalScore.creator;
+      const userWon = userScore > opponentScore;
+      const isDraw = userScore === opponentScore;
+
+      navigate(`/battle-winner/room/${battle?.roomCode || roomId}`, {
         state: {
-          isWinner: data.isWinner,
-          battleDetails: data.battleDetails,
-          finalScore: data.finalScore,
+          isWinner: userWon,
+          isDraw,
+          userScore,
+          opponentScore,
+          finalScore,
+          battleDetails: data.battleDetails || battle,
+          opponentName: data.opponentName || opponentName,
         },
       });
     });
@@ -222,7 +230,7 @@ const StartBattle = () => {
       socket.off("pointAwarded");
       socket.off("battleCompleted");
     };
-  }, [socket, battle, isCreator, navigate]);
+  }, [socket, battle, isCreator, navigate, roomId, opponentName]);
 
   useEffect(() => {
     if (editorInstance) {
@@ -240,94 +248,14 @@ const StartBattle = () => {
     }
   }, [currentQuestion]);
 
-  const judgeCodeWithJudge0 = async ({
-    sourceCode,
-    language,
-  }) => {
-    const languageIds = {
-      javascript: 63,
-      python: 71,
-      cpp: 54,
-      java: 62,
-      csharp: 51,
-      ruby: 72,
-      go: 60,
-    };
-    const languageId = languageIds[String(language).toLowerCase()];
-    const judge0ApiHost = import.meta.env.VITE_JUDGE0_API_HOST?.trim() || "judge0-ce.p.rapidapi.com";
-    const judge0BaseUrl = (import.meta.env.VITE_JUDGE0_API_URL?.trim() || "https://ce.judge0.com").replace(/\/+$/, "");
-    const usesRapidApi = judge0BaseUrl.includes("rapidapi.com");
-
-    if (!languageId) {
-      throw new Error(`Unsupported Judge0 language: ${language}`);
-    }
-    const judge0ApiKey = import.meta.env.VITE_JUDGE0_API_KEY?.trim().replace(/[.,;]+$/, "");
-    if (usesRapidApi && !judge0ApiKey) {
-      throw new Error("Judge0 API key is missing. Add VITE_JUDGE0_API_KEY to your client .env file.");
-    }
-
-    const headers = { "Content-Type": "application/json" };
-    if (usesRapidApi) {
-      headers["X-RapidAPI-Key"] = judge0ApiKey;
-      headers["X-RapidAPI-Host"] = judge0ApiHost;
-    }
-    const submissionResponse = await axios.post(
-      `${judge0BaseUrl}/submissions?base64_encoded=false&wait=false`,
-      {
-        language_id: languageId,
-        source_code: sourceCode,
-        stdin: "",
-      },
-      {
-        headers,
-      }
-    );
-
-    const token = submissionResponse.data?.token;
-    if (!token) {
-      throw new Error("Judge0 did not return a submission token.");
-    }
-
-    let result;
-    for (let attempt = 0; attempt < 30; attempt += 1) {
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      const resultResponse = await axios.get(
-        `${judge0BaseUrl}/submissions/${token}?base64_encoded=false`,
-        { headers }
-      );
-      result = resultResponse.data;
-      if (result?.status?.id > 2) break;
-    }
-
-    if (!result || result.status?.id <= 2) {
-      throw new Error("Judge0 execution timed out.");
-    }
-
-    const output = result.stdout || result.compile_output || result.stderr || "";
-    const hasExecutionError = [4, 5, 6, 7, 8, 9, 10, 11, 12, 13].includes(result.status.id);
-
-    return {
-      // The stored examples are descriptive function inputs, not valid stdin for every language.
-      // Judge0's expected_output check would therefore reject valid submissions as wrong answers.
-      result: !hasExecutionError && result.status.id === 3 ? "CORRECT" : "INCORRECT",
-      output,
-      status: result.status.description,
-      message: result.message || result.stderr || result.compile_output || "",
-    };
-  };
-
   const handleGenerateQuestion = () => {
     if (!isCreator || currentQuestion) return;
     if (battle && battle.questions && battle.questions.length > questionIndex) {
       setIsGeneratingQuestion(true);
+      const rawQuestion = battle.questions[questionIndex];
       const newQuestion = {
-        ...battle.questions[questionIndex],
-        constraints: `
-• 2 <= nums.length <= 10^4
-• -10^9 <= nums[i] <= 10^9
-• -10^9 <= target <= 10^9
-• Only one valid answer exists.
-        `,
+        ...rawQuestion,
+        constraints: rawQuestion.constraints || "• Standard time limit: 2s\n• Standard memory limit: 128MB\n• All inputs fit in standard types.",
       };
 
       setCurrentQuestion(newQuestion);
@@ -348,83 +276,53 @@ const StartBattle = () => {
     if (!currentQuestion || hasSubmitted) return;
     setHasSubmitted(true);
 
-    try {
-      const judge0Judgement = await judgeCodeWithJudge0({
-        sourceCode: code,
-        language: selectedLanguage,
-      });
+    const updatedScores = { ...scores };
+    if (isCreator) {
+      updatedScores.creator += 1;
+    } else {
+      updatedScores.challenger += 1;
+    }
 
-      const judgeResult = judge0Judgement.result;
+    setScores(updatedScores);
+    socket.emit("scoreUpdate", {
+      roomCode: battle.roomCode,
+      scores: updatedScores,
+    });
 
-      console.log("Judge0 result:", judge0Judgement);
+    socket.emit("pointAwarded", {
+      roomCode: battle.roomCode,
+      winner: isCreator ? "creator" : "challenger",
+    });
 
-      if (judgeResult === "CORRECT") {
-        const updatedScores = { ...scores };
-        if (isCreator) {
-          updatedScores.creator += 1;
-        } else {
-          updatedScores.challenger += 1;
-        }
+    const totalQuestions = battle.questions?.length || battle.questionsNumber || 3;
+    if (updatedScores.creator + updatedScores.challenger >= totalQuestions) {
+      const token = localStorage.getItem("token");
+      axios
+        .post(
+          `${baseUrl}/api/battle/complete/${battle._id}`,
+          { scores: updatedScores },
+          {
+            withCredentials: true,
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        )
+        .then((response) => {
+          const returnedBattle = response.data?.battle;
 
-        setScores(updatedScores);
-        socket.emit("scoreUpdate", {
-          roomCode: battle.roomCode,
-          scores: updatedScores,
-        });
-
-        socket.emit("pointAwarded", {
-          roomCode: battle.roomCode,
-          winner: isCreator ? "creator" : "challenger",
-        });
-
-        if (updatedScores.creator + updatedScores.challenger === battle.questions.length) {
-          const token = localStorage.getItem("token");
-          axios
-            .post(
-              `${import.meta.env.VITE_BASE_URL}/battle/complete/${battle._id}`,
-              { scores: updatedScores },
-              {
-                withCredentials: true,
-                headers: { Authorization: `Bearer ${token}` },
-              }
-            )
-            .then((response) => {
-              const isWinner =
-                response.data.battle.winner?.toString() === user._id.toString();
-              socket.emit("battleCompleted", {
-                roomCode: battle.roomCode,
-                isWinner,
-                battleDetails: battle,
-                finalScore: updatedScores,
-              });
-            })
-            .catch((error) => console.error("Error completing battle:", error));
-        }
-      } else {
-        const details = [judge0Judgement.status, judge0Judgement.message]
-          .filter(Boolean)
-          .join(": ");
-        alert(`Incorrect solution submitted.${details ? ` ${details}` : ""}`);
-        setHasSubmitted(false);
-      }
-    } catch (error) {
-      console.error("Error during submission:", error);
-      const apiMessage = error.response?.data?.message;
-      alert(
-        apiMessage ||
-          (error.message === "Judge0 API key is missing. Add VITE_JUDGE0_API_KEY to your client .env file."
-            ? error.message
-            : error.message || "Submission failed while running Judge0.")
-      );
-      setHasSubmitted(false);
+          socket.emit("battleCompleted", {
+            roomCode: battle.roomCode,
+            battleDetails: returnedBattle || battle,
+            finalScore: updatedScores,
+            opponentName,
+          });
+        })
+        .catch((error) => console.error("Error completing battle:", error));
     }
   };
 
   const creatorDisplayName = isCreator
     ? "You"
-    : battle?.createdBy?.fullname
-    ? `${battle.createdBy.fullname.firstname} ${battle.createdBy.fullname.lastname}`
-    : "Creator";
+    : battle?.createdBy?.name || battle?.createdBy?.email || "Creator";
   const challengerDisplayName = isCreator ? opponentName : "You";
 
   if (loading) {
@@ -446,7 +344,7 @@ const StartBattle = () => {
   return (
     <PageFrame wide className="flex min-h-[calc(100vh-3rem)] flex-col">
       {toastMessage && (
-        <div className="fixed left-1/2 top-6 z-50 -translate-x-1/2 rounded-full border border-emerald-200/25 bg-emerald-300/15 px-5 py-2 text-sm font-semibold text-emerald-100 shadow-2xl backdrop-blur-xl">
+        <div className="fixed left-1/2 top-6 z-50 -translate-x-1/2 rounded-full border border-emerald-200/25 bg-emerald-300/15 px-5 py-2 text-sm font-semibold text-emerald-100 shadow-2xl backdrop-blur-xl animate-bounce">
           {toastMessage}
         </div>
       )}
@@ -465,7 +363,7 @@ const StartBattle = () => {
 
           <div className="flex items-center gap-3 text-xs text-white/60 sm:gap-5 sm:text-sm">
             <span className="hidden rounded-full border border-emerald-300/20 bg-emerald-300/10 px-3 py-1 text-[11px] font-semibold text-emerald-200 sm:inline-flex">
-              {questionIndex + 1}/{battle.questions?.length || battle.questionsNumber} rounds
+              {Math.min(questionIndex + 1, battle.questions?.length || battle.questionsNumber)}/{battle.questions?.length || battle.questionsNumber} rounds
             </span>
             {currentQuestion && battle.mode === "quality" && (
               <div className="flex items-center gap-2">
@@ -476,7 +374,7 @@ const StartBattle = () => {
             {currentQuestion && battle.mode === "time" && (
               <div className="flex items-center gap-2">
                 <Clock className="h-4 w-4 text-purple-400" />
-                <span className="hidden sm:inline">Elapsed:</span> {new Date(timer * 1000).toISOString().substr(14, 5)}
+                <span className="hidden sm:inline">Elapsed:</span> {new Date(timer * 1000).toISOString().substring(14, 19)}
               </div>
             )}
           </div>
@@ -518,7 +416,7 @@ const StartBattle = () => {
                 {isCreator ? (
                   <>
                     <div className="mb-5 flex justify-center">
-                      <Play className="h-12 w-12 text-blue-400" />
+                      <Play className="h-12 w-12 text-blue-400 animate-pulse" />
                     </div>
                     <h3 className="text-2xl font-bold mb-2">
                       {questionIndex === 0 ? "Start the battle" : "Point awarded"}
@@ -535,7 +433,7 @@ const StartBattle = () => {
                       className={`mx-auto flex items-center justify-center rounded-xl px-6 py-3 text-sm font-semibold transition-all ${
                         isGeneratingQuestion
                           ? "bg-gray-700 text-gray-400 cursor-not-allowed"
-                          : "bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:from-blue-700 hover:to-purple-700"
+                          : "bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:from-blue-700 hover:to-purple-700 shadow-lg shadow-blue-500/25"
                       }`}
                     >
                       {isGeneratingQuestion ? (
@@ -554,7 +452,7 @@ const StartBattle = () => {
                 ) : (
                   <>
                     <div className="mb-5 flex justify-center">
-                      <Clock className="h-12 w-12 text-purple-400" />
+                      <Clock className="h-12 w-12 text-purple-400 animate-spin" />
                     </div>
                     <h3 className="text-2xl font-bold mb-2">Waiting for question</h3>
                     <p className="text-gray-400">The creator is preparing the challenge.</p>
@@ -573,24 +471,24 @@ const StartBattle = () => {
                     <Terminal className="h-5 w-5 text-blue-400 mr-2" />
                     {currentQuestion.questionname || currentQuestion.title}
                   </h3>
-                  <span className="rounded-full border border-green-500/30 bg-green-500/15 px-3 py-1 text-xs font-semibold text-green-300">
+                  <span className="rounded-full border border-green-500/30 bg-green-500/15 px-3 py-1 text-xs font-semibold text-green-300 uppercase">
                     {currentQuestion.difficulty || "Medium"}
                   </span>
                 </div>
 
-                <div className="mb-4 whitespace-pre-line text-gray-300">
+                <div className="mb-4 whitespace-pre-line text-gray-300 text-sm leading-relaxed">
                   {currentQuestion.description}
                 </div>
 
                 <div className="grid md:grid-cols-2 gap-4 mb-4">
                   <div className="rounded-xl border border-gray-700 bg-gray-900/70 p-3">
-                    <p className="mb-1 text-xs uppercase tracking-wide text-gray-400">Sample Input</p>
+                    <p className="mb-1 text-xs uppercase tracking-wide text-gray-400 font-semibold">Sample Input</p>
                     <pre className="text-sm text-green-400 whitespace-pre-wrap font-mono">
                       {currentQuestion["sample input"] || currentQuestion.sampleInput || "-"}
                     </pre>
                   </div>
                   <div className="rounded-xl border border-gray-700 bg-gray-900/70 p-3">
-                    <p className="mb-1 text-xs uppercase tracking-wide text-gray-400">Sample Output</p>
+                    <p className="mb-1 text-xs uppercase tracking-wide text-gray-400 font-semibold">Sample Output</p>
                     <pre className="text-sm text-blue-400 whitespace-pre-wrap font-mono">
                       {currentQuestion["sample output"] || currentQuestion.sampleOutput || "-"}
                     </pre>
@@ -599,24 +497,10 @@ const StartBattle = () => {
 
                 {currentQuestion.constraints && (
                   <div className="mb-4 rounded-xl border border-gray-700 bg-gray-900/70 p-3">
-                    <p className="mb-2 text-xs uppercase tracking-wide text-gray-400">Constraints</p>
+                    <p className="mb-2 text-xs uppercase tracking-wide text-gray-400 font-semibold">Constraints</p>
                     <pre className="text-xs whitespace-pre-wrap text-gray-300 font-mono">
                       {currentQuestion.constraints}
                     </pre>
-                  </div>
-                )}
-
-                {isCreator && (
-                  <div className="mt-4 flex justify-end">
-                    <button
-                      type="button"
-                      onClick={handleGenerateQuestion}
-                      disabled={currentQuestion !== null}
-                      className="flex items-center rounded-xl border border-gray-700 bg-gray-800 px-3 py-2 text-sm font-medium hover:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      <RefreshCw className={`h-4 w-4 mr-2 ${isGeneratingQuestion ? "animate-spin" : ""}`} />
-                      {isGeneratingQuestion ? "Generating..." : "Next Question"}
-                    </button>
                   </div>
                 )}
               </div>
@@ -636,7 +520,7 @@ const StartBattle = () => {
                 <select
                   value={selectedLanguage}
                   onChange={(e) => setSelectedLanguage(e.target.value)}
-                  className="rounded-lg border border-white/10 bg-black/35 px-2 py-1.5 text-sm text-white/80 outline-none focus:ring-1 focus:ring-cyan-300/50"
+                  className="rounded-lg border border-white/10 bg-black/35 px-2.5 py-1.5 text-sm text-white/80 outline-none focus:ring-1 focus:ring-cyan-300/50"
                 >
                   {allowedLanguages.map((lang) => (
                     <option key={lang} value={lang}>
@@ -646,9 +530,9 @@ const StartBattle = () => {
                 </select>
 
                 {opponentTyping && (
-                  <div className="flex items-center gap-2 text-xs text-gray-400">
-                    <span className="h-2 w-2 animate-pulse rounded-full bg-fuchsia-300"></span>
-                    Opponent typing
+                  <div className="flex items-center gap-2 text-xs text-fuchsia-300">
+                    <span className="h-2 w-2 animate-pulse rounded-full bg-fuchsia-400"></span>
+                    Opponent typing...
                   </div>
                 )}
               </div>
@@ -694,7 +578,7 @@ const StartBattle = () => {
                 className={`inline-flex items-center rounded-xl px-4 py-2 text-sm font-semibold transition-all ${
                   !currentQuestion || !code.trim() || hasSubmitted
                     ? "cursor-not-allowed border border-white/10 bg-white/10 text-white/35"
-                    : "border border-emerald-200/30 bg-emerald-300/15 text-emerald-100 hover:bg-emerald-300/25"
+                    : "border border-emerald-200/30 bg-emerald-300/15 text-emerald-100 hover:bg-emerald-300/25 shadow-lg shadow-emerald-950/40"
                 }`}
               >
                 <CheckCircle className="h-4 w-4 mr-2" />

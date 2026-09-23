@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useContext } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
 import toast from "react-hot-toast";
@@ -8,9 +8,12 @@ import ActionButton from "../components/ui/ActionButton";
 import GlassPanel from "../components/ui/GlassPanel";
 import TextInput from "../components/ui/TextInput";
 
+import { UserDataContext } from "../context/UserContext";
+
 const Login = () => {
   const navigate = useNavigate();
-  const Base_Url = import.meta.env.VITE_BASE_URL;
+  const { setUser } = useContext(UserDataContext);
+  const Base_Url = import.meta.env.VITE_BASE_URL || "http://localhost:9000";
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -30,11 +33,14 @@ const Login = () => {
 
       if (res.data?.token) {
         localStorage.setItem("token", res.data.token);
-        localStorage.setItem("user", JSON.stringify({
+        const userData = {
+          _id: res.data.id,
           id: res.data.id,
           name: res.data.name,
           email: res.data.email,
-        }));
+        };
+        localStorage.setItem("user", JSON.stringify(userData));
+        if (setUser) setUser(userData);
       }
 
       toast.success(res.data.message || "Login successful");

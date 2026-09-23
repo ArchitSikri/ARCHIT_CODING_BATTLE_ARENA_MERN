@@ -25,15 +25,15 @@ const CreaterRoom = () => {
     isPrivate: true,
   });
 
+  const updateForm = (key, value) => {
+    setForm((current) => ({ ...current, [key]: value }));
+  };
+
   useEffect(() => {
     if (user?.preferredLanguage) {
       updateForm("allowedLanguages", [user.preferredLanguage]);
     }
   }, [user?.preferredLanguage]);
-
-  const updateForm = (key, value) => {
-    setForm((current) => ({ ...current, [key]: value }));
-  };
 
   const handleLanguageChange = (event) => {
     const selectedLanguages = Array.from(event.target.selectedOptions, (option) => option.value);
@@ -57,8 +57,9 @@ const CreaterRoom = () => {
 
     setIsSubmitting(true);
     try {
+      const baseUrl = import.meta.env.VITE_BASE_URL || "http://localhost:9000";
       const response = await axios.post(
-        `${import.meta.env.VITE_BASE_URL}/api/battle/create`,
+        `${baseUrl}/api/battle/create`,
         form,
         { headers: { Authorization: `Bearer ${token}` } }
       );

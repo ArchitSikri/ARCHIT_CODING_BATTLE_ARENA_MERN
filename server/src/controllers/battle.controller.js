@@ -43,7 +43,7 @@ const createbattle = async ( req , res, next ) => {
 
 const getAllBattles = async (req, res, next) => {
   try {
-    const battles = await battleModel.find({}).populate('createdBy', 'fullname');
+    const battles = await battleModel.find({}).populate('createdBy', 'name email socketId');
     res.status(200).json({ battles });
   } catch (error) {
     next(error);
@@ -53,7 +53,8 @@ const getAllBattles = async (req, res, next) => {
 const getBattleByRoomCode = async (req, res, next) => {
   try {
     const battle = await battleModel.findOne({ roomCode: req.params.roomCode })
-      .populate('createdBy', 'fullname');
+      .populate('createdBy', 'name email socketId')
+      .populate('challenger', 'name email socketId');
 
     if (!battle) {
       return res.status(404).json({ message: "Battle room not found" });
@@ -80,8 +81,8 @@ const joinBattle = async (req, res, next) => {
 
     if (availableBattle.challenger?.toString() === req.user._id.toString()) {
       const joinedBattle = await battleModel.findById(availableBattle._id)
-        .populate("createdBy", "name email")
-        .populate("challenger", "name email");
+        .populate("createdBy", "name email socketId")
+        .populate("challenger", "name email socketId");
 
       return res.status(200).json({ battle: joinedBattle, message: "Already joined this battle room" });
     }
@@ -102,8 +103,8 @@ const joinBattle = async (req, res, next) => {
       { $set: { challenger: req.user._id } },
       { new: true }
     )
-      .populate("createdBy", "name email")
-      .populate("challenger", "name email");
+      .populate("createdBy", "name email socketId")
+      .populate("challenger", "name email socketId");
 
     if (!battle) {
       return res.status(409).json({
@@ -119,7 +120,7 @@ const joinBattle = async (req, res, next) => {
 };
 
 const deleteBattle = async (req, res, next) => {
-    try {
+  try {
     const battleId = req.params.id;
     const battle = await battleModel.findByIdAndDelete(battleId);
     if (!battle) {
@@ -132,18 +133,18 @@ const deleteBattle = async (req, res, next) => {
 };
 
 const leaveBattle = async (req, res, next) => {
-    try {
+  try {
     const battleId = req.params.id;
-    const { userId } = req.body; // jisne leave kiya uski id
+    const { userId } = req.body;
     
     const battle = await battleModel.findById(battleId);
     if (!battle) {
       return res.status(404).json({ message: "Battle not found" });
     }
 
-    if (battle.user1.toString() === userId) {
+    if (battle.createdBy?.toString() === userId?.toString()) {
       battle.user1SocketId = null;
-    } else if (battle.user2.toString() === userId) {
+    } else if (battle.challenger?.toString() === userId?.toString()) {
       battle.user2SocketId = null;
     }
 
@@ -155,7 +156,7 @@ const leaveBattle = async (req, res, next) => {
 };
 
 const StartBattle = async (req, res, next) => {
-    try {
+  try {
     const battleId = req.params.id;
     const battle = await battleModel.findById(battleId);
     if (!battle) {
@@ -191,24 +192,20 @@ const StartBattle = async (req, res, next) => {
 };
 
 const completeBattle = async (req, res, next) => {
-    try {
+  try {
     const battleId = req.params.id;
     const { scores } = req.body; 
     const battle = await battleModel.findById(battleId);
     if (!battle) {
       return res.status(404).json({ message: "Battle not found" });
     }
-    let winner;
-    if (scores.creator + scores.challenger === battle.questions.length) {
+    let winner = null;
+    if (scores && typeof scores.creator === 'number' && typeof scores.challenger === 'number') {
       if (scores.creator > scores.challenger) {
         winner = battle.createdBy;
       } else if (scores.creator < scores.challenger) {
         winner = battle.challenger;
-      } else {
-        winner = null;
       }
-    } else {
-      winner = null;
     }
     
     battle.status = 'completed';
@@ -216,9 +213,9 @@ const completeBattle = async (req, res, next) => {
     await battle.save();
     
     const populatedBattle = await battleModel.findById(battleId)
-      .populate('createdBy', 'fullname socketId')
-      .populate('winner', 'fullname socketId')
-      .populate('challenger', 'fullname socketId');
+      .populate('createdBy', 'name email socketId')
+      .populate('winner', 'name email socketId')
+      .populate('challenger', 'name email socketId');
 
     return res.status(200).json({ battle: populatedBattle, message: "Battle completed successfully." });
   } catch (error) {

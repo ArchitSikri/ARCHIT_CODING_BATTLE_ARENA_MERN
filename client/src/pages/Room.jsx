@@ -1,6 +1,6 @@
 import { useContext, useEffect, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Check, Clipboard, Copy, Play, UsersRound } from "lucide-react";
+import { ArrowLeft, Check, Clipboard, Copy, UsersRound } from "lucide-react";
 import toast from "react-hot-toast";
 import axios from "axios";
 import PageFrame from "../components/layout/PageFrame";
@@ -26,6 +26,8 @@ const Room = () => {
   const [showBattleModal, setShowBattleModal] = useState(false);
   const [opponentData, setOpponentData] = useState(null);
 
+  const baseUrl = import.meta.env.VITE_BASE_URL || "http://localhost:9000";
+
   useEffect(() => {
     if (!roomId) return;
 
@@ -37,7 +39,7 @@ const Room = () => {
 
     const token = localStorage.getItem("token");
     axios
-      .get(`${import.meta.env.VITE_BASE_URL}/api/battle/room/${roomId}`, {
+      .get(`${baseUrl}/api/battle/room/${roomId}`, {
         headers: { Authorization: `Bearer ${token}` },
       })
       .then((response) => {
@@ -109,7 +111,7 @@ const Room = () => {
       try {
         const token = localStorage.getItem("token");
         const response = await axios.get(
-          `${import.meta.env.VITE_BASE_URL}/battle/all`,
+          `${baseUrl}/api/battle/all`,
           {
             withCredentials: true,
             headers: { Authorization: `Bearer ${token}` },
@@ -141,7 +143,7 @@ const Room = () => {
     }
 
     return () => clearInterval(pollInterval);
-  }, [isCreator, roomId, navigate]);
+  }, [isCreator, roomId, navigate, baseUrl]);
 
   const startBattle = async () => {
     if (!isCreator || !opponentJoined) return;
@@ -156,7 +158,7 @@ const Room = () => {
     try {
       const token = localStorage.getItem("token");
       const response = await axios.get(
-        `${import.meta.env.VITE_BASE_URL}/users/opponent/${opponentSocketId}`,
+        `${baseUrl}/api/user/opponent/${opponentSocketId}`,
         {
           withCredentials: true,
           headers: { Authorization: `Bearer ${token}` },
@@ -170,7 +172,7 @@ const Room = () => {
           opponent = opponent[0];
         }
 
-        if (opponent && (opponent.name || opponent.fullname || opponent.email)) {
+        if (opponent && (opponent.name || opponent.email)) {
           setOpponentData(opponent);
           setShowBattleModal(true);
         }
@@ -186,7 +188,7 @@ const Room = () => {
     try {
       const token = localStorage.getItem("token");
       const response = await axios.post(
-        `${import.meta.env.VITE_BASE_URL}/battle/start/${battle._id}`,
+        `${baseUrl}/api/battle/start/${battle._id}`,
         {},
         {
           withCredentials: true,
@@ -236,7 +238,7 @@ const Room = () => {
         if (!confirmed) return;
 
         await axios.delete(
-          `${import.meta.env.VITE_BASE_URL}/battle/delete/${battle._id}`,
+          `${baseUrl}/api/battle/delete/${battle._id}`,
           {
             withCredentials: true,
             headers: { Authorization: `Bearer ${token}` },
@@ -245,7 +247,7 @@ const Room = () => {
         navigate("/home");
       } else {
         await axios.post(
-          `${import.meta.env.VITE_BASE_URL}/battle/leave/${battle._id}`,
+          `${baseUrl}/api/battle/leave/${battle._id}`,
           { userId: user?._id },
           {
             withCredentials: true,
@@ -271,9 +273,9 @@ const Room = () => {
   };
 
   const opponentName =
-    opponentData?.fullname?.firstname ||
     opponentData?.name ||
     opponentData?.email ||
+    (battle?.challenger?.name) ||
     "Opponent";
 
   if (isLoading) {

@@ -46,7 +46,7 @@ function initializesocket(server) {
                         battle.user2SocketId = socket.id;
                         await battle.save();
                         console.log(`Assigned user2SocketId for room ${roomId}: ${socket.id}`);
-                        const opponentUser = await userModel.findById(socket.userId);
+                        const opponentUser = await userModel.findById(socket.userId).select("-password");
                         io.to(battle.user1SocketId).emit("opponentJoined", { opponent: opponentUser });
                     } else if (!isCreator && !isChallenger) {
                         console.log(`User ${socket.userId} is not a participant in room ${roomId}`);

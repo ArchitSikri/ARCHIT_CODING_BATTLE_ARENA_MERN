@@ -53,7 +53,7 @@ const logout = (req, res) => {
         path: "/",
         maxAge: 0,
       })
-      .json({ message: "Buyer logged out successfully." });
+      .json({ message: "User logged out successfully." });
   } catch (error) {
     console.log(error);
     return res.status(500).json({ message: "Internal server error" });
@@ -65,10 +65,13 @@ const getUserProfile = async(req,res )=>{
 };
 
 const getopponent = async(req,res )=>{
-    const socketId = req.params.socketId;
-    const opponent = await user.findOne({socketId: socketId});
-    res.status(200).json({ opponent: opponent });
-
+    try {
+        const socketId = req.params.socketId;
+        const opponent = await user.findOne({ socketId }).select("-password");
+        res.status(200).json({ opponent });
+    } catch (err) {
+        res.status(500).json({ message: "Error fetching opponent" });
+    }
 }
 
 
