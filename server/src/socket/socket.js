@@ -16,13 +16,15 @@ function initializesocket(server) {
 
         console.log(`Client connected: ${socket.id}`);
 
-        socket.on("join", async (userId) => {
+        socket.on("join", async (userId, acknowledge) => {
             try {
                 socket.userId = userId;
                 await userModel.findByIdAndUpdate(userId, { socketId: socket.id });
                 console.log(`User ${userId} connected with socket ID: ${socket.id}`);
+                acknowledge?.({ ok: true });
             } catch (error) {
                 console.error("Error updating user socket ID:", error);
+                acknowledge?.({ ok: false });
             }
         });
 
@@ -33,19 +35,23 @@ function initializesocket(server) {
                     socket.join(roomId);
                     console.log(`Socket ${socket.id} joined room ${roomId}`);
 
-                    if (!battle.user1SocketId) {
+                    const isCreator = String(battle.createdBy) === String(socket.userId);
+                    const isChallenger = String(battle.challenger) === String(socket.userId);
+
+                    if (isCreator && battle.user1SocketId !== socket.id) {
                         battle.user1SocketId = socket.id;
                         await battle.save();
                         console.log(`Assigned user1SocketId for room ${roomId}: ${socket.id}`);
-                    } else if (!battle.user2SocketId) {
+                    } else if (isChallenger && battle.user2SocketId !== socket.id) {
                         battle.user2SocketId = socket.id;
-                        battle.challenger = socket.userId;
                         await battle.save();
                         console.log(`Assigned user2SocketId for room ${roomId}: ${socket.id}`);
                         const opponentUser = await userModel.findById(socket.userId);
                         io.to(battle.user1SocketId).emit("opponentJoined", { opponent: opponentUser });
+                    } else if (!isCreator && !isChallenger) {
+                        console.log(`User ${socket.userId} is not a participant in room ${roomId}`);
                     } else {
-                        console.log(`Both user socket IDs already assigned for room ${roomId}`);
+                        console.log(`Socket ${socket.id} is already assigned in room ${roomId}`);
                     }
                 } else {
                     console.log(`Battle not found for room ID: ${roomId}`);

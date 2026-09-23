@@ -56,8 +56,11 @@ const Room = () => {
     if (!socket || !user?._id || !roomId) return;
 
     const registerSocket = () => {
-      socket.emit("join", user._id);
-      socket.emit("battleRoom", roomId);
+      socket.emit("join", user._id, (response) => {
+        if (response?.ok) {
+          socket.emit("battleRoom", roomId);
+        }
+      });
     };
 
     if (socket.connected) {
