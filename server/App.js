@@ -12,8 +12,9 @@ const cors = require("cors");
 const allowedOrigins = [
     "http://localhost:5173",
     "http://localhost:3000",
+    process.env.FRONTEND_URL,
     "https://code-battle-frontend.onrender.com"
-];
+].filter(Boolean);
 
 app.use(cors({
     origin: (origin, callback) => {
