@@ -10,7 +10,7 @@ import TextInput from "../components/ui/TextInput";
 
 const Register = () => {
 
-  const Base_Url = import.meta.env.VITE_BASE_URL;
+  const Base_Url = import.meta.env.VITE_BASE_URL || "http://localhost:9000";
   const navigate = useNavigate();
 
   const [user, setUser] = useState({
