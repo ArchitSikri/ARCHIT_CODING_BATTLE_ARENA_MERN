@@ -1,91 +1,59 @@
 # Coding Battle MERN
 
-Coding Battle is a full-stack MERN application for head-to-head coding matches. Users can register, create or join a room, prepare for a battle, solve a coding challenge, and view the result. Socket.IO provides the real-time room and battle communication.
-
-## Tech Stack
-
-- Frontend: React 19, Vite, React Router
-- UI: Tailwind CSS, Lucide React, Remix Icon, GSAP
-- Code editor: Monaco Editor
-- Backend: Node.js, Express.js
-- Database: MongoDB with Mongoose
-- Real-time communication: Socket.IO
-- Authentication: JWT + cookie-based auth
+Coding Battle is a full-stack MERN application for head-to-head coding matches. Players can create or join a room, prepare for a battle, solve a challenge, and view the result. Socket.IO handles real-time room and battle communication.
 
 ## Features
 
-- User registration and login
-- Create and join battle rooms
-- Battle preparation and arena screens
-- Coding challenge editor experience
-- Battle winner and profile screens
-- Real-time battle rooms with Socket.IO
+- User registration and cookie-based authentication
+- Create, join, leave, and delete battle rooms
+- Real-time rooms powered by Socket.IO
+- Coding challenge editor powered by Monaco Editor
+- Battle preparation, result, and profile screens
 - MongoDB-backed users, questions, and battles
-- Responsive page layouts with a shared background and transparent panels
+- Responsive UI with reusable glass panels and shared page layouts
+
+## Tech Stack
+
+- Frontend: React 19, Vite, React Router, Tailwind CSS
+- UI: Lucide React, Remix Icon, GSAP, React Hot Toast
+- Editor: Monaco Editor
+- Backend: Node.js, Express 5
+- Database: MongoDB with Mongoose
+- Real-time communication: Socket.IO
+- Authentication: JWT stored in an HTTP-only cookie
 
 ## Project Structure
 
-```bash
+```text
 CODING_BATTLE_MERN/
-├── client/
-│   ├── src/
-│   │   ├── components/
-│   │   │   ├── layout/       # Page frame, background, header, GSAP entrance
-│   │   │   └── ui/           # Glass panels, buttons, inputs, headings
-│   │   ├── constants/        # Shared frontend constants
-│   │   ├── pages/            # Login, lobby, room, arena, result, profile
-│   │   ├── App.jsx           # Client routes
-│   │   └── main.jsx          # React entry point
-│   ├── public/
-│   ├── package.json
-│   ├── vite.config.js
-│   └── index.html
-├── server/
-│   ├── src/
-│   │   ├── config/
-│   │   ├── controllers/
-│   │   ├── middlewares/
-│   │   ├── models/
-│   │   ├── routes/
-│   │   ├── services/
-│   │   └── socket/
-│   ├── App.js
-│   ├── server.js
-│   └── package.json
+├── client/                 # React/Vite frontend
+│   ├── src/components/     # Shared layout and UI components
+│   ├── src/context/        # User and Socket.IO context
+│   ├── src/pages/          # Login, lobby, room, battle, result, profile
+│   └── src/App.jsx         # Client routes
+├── server/                 # Express/Socket.IO backend
+│   ├── src/config/         # Database connection
+│   ├── src/controllers/    # Request handlers
+│   ├── src/middlewares/    # Authentication middleware
+│   ├── src/models/         # Mongoose models
+│   ├── src/routes/         # API routes
+│   ├── src/services/       # Battle and question services
+│   └── src/socket/         # Real-time event handling
 ├── .gitignore
 └── README.md
 ```
 
-## Frontend Routes
-
-| Route | Screen |
-| --- | --- |
-| `/` | Login |
-| `/register` | Registration |
-| `/home` | Battle lobby |
-| `/create-room` | Create a private room |
-| `/join-room` | Join a room with a code |
-| `/room/:roomId` | Room lobby |
-| `/start-battle/room/:roomId` | Battle preparation |
-| `/battle-arena/room/:roomId` | Coding arena |
-| `/battle-winner/room/:roomId` | Battle result |
-| `/profile` | Player profile |
-
-The frontend keeps reusable presentation pieces in `client/src/components/`. `PageFrame` owns the shared background, overlay, header, and GSAP entrance animation, while the smaller UI components handle panels, buttons, headings, and inputs.
-
 ## Prerequisites
-
-Before running the app, make sure you have installed:
 
 - Node.js 18 or newer
 - npm
-- A MongoDB database, local or hosted
+- A local or hosted MongoDB database
 
 ## Quick Start
 
-The frontend and backend run as separate processes. Open two terminals from the repository root.
+The client and server run as separate processes. Open two terminals from the repository root.
 
-### 1. Configure and start the backend
+### 1. Start the backend
 
 ```bash
 cd server
@@ -95,32 +63,32 @@ npm install
 Create `server/.env`:
 
 ```env
-PORT=5000
+PORT=9000
 MONGO_URL=mongodb://127.0.0.1:27017/coding-battle
 JWT_SECRET=replace_with_a_long_random_secret
 ```
 
-Then start the API and Socket.IO server:
+Start the API and Socket.IO server:
 
 ```bash
 npm run dev
 ```
 
-The backend is available at `http://localhost:5000`. Its health check is `GET /`.
+The backend runs at `http://localhost:9000` by default. Verify it with `GET /`.
 
-### 2. Configure and start the frontend
+### 2. Start the frontend
 
-In the second terminal:
+In a second terminal:
 
 ```bash
 cd client
 npm install
 ```
 
-Create `client/.env`:
+Create `client/.env` if you want to override the default backend URL:
 
 ```env
-VITE_BASE_URL=http://localhost:5000
+VITE_BASE_URL=http://localhost:9000
 ```
 
 Start Vite:
@@ -129,85 +97,82 @@ Start Vite:
 npm run dev
 ```
 
-Open `http://localhost:5173` in a browser.
+Open `http://localhost:5173` in your browser.
 
 ## Environment Variables
 
 ### Backend (`server/.env`)
 
-- `PORT`: port used by the Express and Socket.IO server.
-- `MONGO_URL`: MongoDB connection string.
-- `JWT_SECRET`: secret used to sign authentication cookies. Set this in every environment; the code fallback is intended only for local development.
+| Variable | Purpose |
+| --- | --- |
+| `PORT` | Port used by Express and Socket.IO. Defaults to `9000`. |
+| `MONGO_URL` | MongoDB connection string. |
+| `JWT_SECRET` | Secret used to sign authentication cookies. |
 
 ### Frontend (`client/.env`)
 
-- `VITE_BASE_URL`: base URL of the backend, without a trailing slash.
+| Variable | Purpose |
+| --- | --- |
+| `VITE_BASE_URL` | Backend URL used by Axios and Socket.IO. Defaults to `http://localhost:9000`. |
 
-Restart Vite after changing frontend environment variables. Never commit either `.env` file.
+Never commit either `.env` file. Restart Vite after changing frontend environment variables.
+
+## Frontend Routes
+
+| Route | Screen |
+| --- | --- |
+| `/` | Login |
+| `/register` | Registration |
+| `/home` | Battle lobby |
+| `/create-room` | Create a room |
+| `/join-room` | Join a room with a code |
+| `/room/:roomId` | Room lobby |
+| `/start-battle/room/:roomId` | Battle preparation and coding screen |
+| `/battle-winner/room/:roomId` | Battle result |
+| `/profile` | Player profile |
 
 ## API Overview
 
-The backend accepts JSON requests and uses an HTTP-only authentication cookie. User and battle routes are available under the prefixes below:
+Routes are available under both `/users` and `/api/user`, and battle routes are available under both `/battle` and `/api/battle`. Protected routes require the authentication cookie.
 
 | Method | Path | Purpose |
 | --- | --- | --- |
 | `POST` | `/users/register` | Register a user |
 | `POST` | `/users/login` | Log in and set the auth cookie |
 | `GET` | `/users/profile` | Get the authenticated user's profile |
+| `GET` | `/users/opponent/:socketId` | Get an opponent by socket ID |
 | `GET` | `/users/logout` | Log out |
 | `POST` | `/battle/create` | Create a battle room |
 | `GET` | `/battle/all` | List battle rooms |
 | `GET` | `/battle/room/:roomCode` | Get a room |
 | `POST` | `/battle/join/:roomCode` | Join a room |
+| `DELETE` | `/battle/delete/:id` | Delete a room |
+| `POST` | `/battle/leave/:id` | Leave a room |
 | `POST` | `/battle/start/:id` | Start a battle |
 | `POST` | `/battle/complete/:id` | Complete a battle |
 
-The user routes are also mounted under `/api/user`, and the battle routes under `/api/battle`. Authenticated requests must include credentials.
-
-## Common Commands
+## Useful Commands
 
 Run commands from the relevant package directory. There is no root `package.json`.
 
 ```bash
-# backend
-cd server
-npm install
-npm run dev
-
-# frontend
+# frontend development
 cd client
-npm install
 npm run dev
 
 # frontend validation
-cd client
 npm run lint
 npm run build
 
-```bash
-## Project Structure
-
-```text
-CODING_BATTLE_MERN/
-├── client/                 # React/Vite frontend
-│   ├── src/components/     # Shared layout and UI components
-│   ├── src/context/        # User and Socket.IO context
-│   ├── src/pages/          # Application screens
-│   └── src/App.jsx         # Client routes
-├── server/                 # Express/Socket.IO backend
-│   ├── src/controllers/    # Request handlers
-│   ├── src/models/         # Mongoose models
-│   ├── src/routes/         # API routes
-│   ├── src/services/       # Battle and question services
-│   └── src/socket/         # Real-time event handling
-└── README.md
+# backend development
+cd ../server
+npm run dev
 ```
 
 ## Current Limitations
 
-- The backend package does not currently include automated tests.
-- The client has lint and production build scripts; run both before submitting frontend changes.
-- Production deployments must configure CORS, MongoDB, cookies, and the frontend `VITE_BASE_URL` for the deployed domains.
+- The backend does not currently include automated tests.
+- Production deployments must configure CORS, MongoDB, cookies, and `VITE_BASE_URL` for the deployed domains.
 
 ## License
 
